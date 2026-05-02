@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-TikTok Live Chat → VTuber Bridge
-Reads TikTok live chat and sends messages to Open-LLM-VTuber via proxy WebSocket.
+TikTok Live Chat → VTuber Bridge (with EulerStream premium)
+Reads TikTok live chat using TikTokLive + EulerStream API and forwards to Open-LLM-VTuber.
 
 Usage:
   python3 tiktok-chat-bridge.py YOUR_TIKTOK_USERNAME
@@ -9,11 +9,9 @@ Usage:
 Example:
   python3 tiktok-chat-bridge.py solxhunter
 
-Requirements:
-  pip install TikTokLive websocket-client
-
-No API key or paid service needed — uses free open-source TikTokLive library.
+Uses EulerStream premium API key for reliable connections (no rate limits).
 GitHub: https://github.com/isaackogan/TikTokLive
+EulerStream: https://www.eulerstream.com/docs
 """
 
 import asyncio
@@ -23,7 +21,11 @@ import os
 
 try:
     from TikTokLive import TikTokLiveClient
-    from TikTokLive.events import ConnectEvent, CommentEvent, GiftEvent, LikeEvent
+    from TikTokLive.client.web.web_settings import WebDefaults
+    from TikTokLive.events import (
+        ConnectEvent, CommentEvent, GiftEvent, LikeEvent,
+        JoinEvent, ShareEvent, FollowEvent, LiveEndEvent
+    )
 except ImportError:
     print("ERROR: TikTokLive not installed. Run:")
     print("  cd ~/Open-LLM-VTuber && .venv/bin/python -m pip install TikTokLive")
@@ -36,8 +38,17 @@ except ImportError:
     print("  pip install websocket-client")
     sys.exit(1)
 
-# Configuration
+# ============================================
+# CONFIGURATION
+# ============================================
+
+# EulerStream API Key (premium — handles TikTok signatures)
+EULERSTREAM_API_KEY = "euler_NDU3ZWViNGU0ZjMzN2VmZWI1NDNiMDcyMDRmNmEzNTZmNmZhYTAyZjQ3ZTU1NjlhNWYyMjA4"
+
+# VTuber proxy WebSocket
 PROXY_URL = os.environ.get("VTUBER_WS_URL", "ws://localhost:12393/proxy-ws")
+
+# ============================================
 
 if len(sys.argv) < 2:
     print(f"Usage: {sys.argv[0]} TIKTOK_USERNAME")
@@ -45,10 +56,15 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 TIKTOK_USERNAME = sys.argv[1].lstrip("@")
-print(f"🎭 TikTok → VTuber Bridge")
+
+print(f"🎭 TikTok → VTuber Bridge (EulerStream Premium)")
 print(f"   TikTok: @{TIKTOK_USERNAME}")
 print(f"   VTuber: {PROXY_URL}")
+print(f"   EulerStream: Active ✅")
 print()
+
+# Set EulerStream API key (must be before client creation)
+WebDefaults.tiktok_sign_api_key = EULERSTREAM_API_KEY
 
 # Create TikTok client
 client = TikTokLiveClient(unique_id=TIKTOK_USERNAME)
@@ -79,16 +95,22 @@ def send_to_vtuber(text: str):
     except Exception as e:
         print(f"Send error: {e}, reconnecting...")
         ws_conn = None
-        connect_vtuber()
-        if ws_conn:
+        if connect_vtuber():
             try:
                 ws_conn.send(json.dumps({"type": "text-input", "text": text}))
             except:
                 pass
 
+# ============================================
+# EVENT HANDLERS
+# ============================================
+
 @client.on(ConnectEvent)
 async def on_connect(event: ConnectEvent):
-    print(f"✅ Connected to TikTok LIVE: @{event.unique_id} (Room ID: {client.room_id})")
+    print(f"✅ Connected to TikTok LIVE!")
+    print(f"   Room ID: {client.room_id}")
+    print(f"   Streamer: @{event.unique_id}")
+    print()
 
 @client.on(CommentEvent)
 async def on_comment(event: CommentEvent):
@@ -111,12 +133,35 @@ async def on_like(event: LikeEvent):
     count = event.count if hasattr(event, 'count') else 1
     print(f"❤️ {author} liked x{count}")
 
+@client.on(JoinEvent)
+async def on_join(event: JoinEvent):
+    author = event.user.nickname
+    print(f"👋 {author} joined")
+
+@client.on(FollowEvent)
+async def on_follow(event: FollowEvent):
+    author = event.user.nickname
+    print(f"➕ {author} followed!")
+    send_to_vtuber(f"{author} just followed!")
+
+@client.on(ShareEvent)
+async def on_share(event: ShareEvent):
+    author = event.user.nickname
+    print(f"🔄 {author} shared the stream")
+
+@client.on(LiveEndEvent)
+async def on_live_end(event: LiveEndEvent):
+    print(f"🔴 Stream ended!")
+
+# ============================================
+# MAIN
+# ============================================
+
 if __name__ == "__main__":
-    # Connect to VTuber first
     connect_vtuber()
 
     print(f"🚀 Starting TikTok LIVE reader for @{TIKTOK_USERNAME}...")
-    print(f"   Waiting for the stream to be live...")
+    print(f"   Waiting for stream to be live...")
     print()
 
     try:
@@ -124,8 +169,10 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n👋 Stopped by user")
     except Exception as e:
-        print(f"Error: {e}")
-        print("\nPossible reasons:")
+        print(f"\n❌ Error: {e}")
+        print()
+        print("Possible reasons:")
         print("  - User is not currently live")
-        print("  - Username is incorrect")
-        print("  - TikTok is blocking the connection (try with a proxy)")
+        print("  - Username is incorrect (don't include @)")
+        print("  - TikTok blocked the connection (EulerStream handles this)")
+        print("  - Check https://www.eulerstream.com for API key status")
