@@ -6,8 +6,6 @@
 
 **Watch it live:** [https://youtube.com/watch?v=7V90Jx7Eygo](https://youtube.com/watch?v=7V90Jx7Eygo)
 
-The AI VTuber reads YouTube chat and responds in real-time with voice and animated Live2D character.
-
 ---
 
 ## 🏗️ Architecture
@@ -54,40 +52,26 @@ The AI VTuber reads YouTube chat and responds in real-time with voice and animat
                     └─────────────────────┘
 ```
 
-### Data Flow
-```
-YouTube Chat → Chat Bridge → WebSocket → VTuber Server → LLM API
-                                                      ↓
-                                               Response Text
-                                              ↙           ↘
-                                     Edge TTS         Live2D Model
-                                     (Audio)          (Animation)
-                                         ↘               ↙
-                                     PulseAudio    Chrome (:99)
-                                         ↘           ↙
-                                          FFmpeg (x11grab + pulse)
-                                               ↓
-                                          YouTube RTMP
-```
-
 ---
 
-## 📦 All GitHub Repos & Dependencies Used
+## 📦 All Dependencies (with full setup for each)
 
-| # | Project | What We Use It For | Link |
-|---|---------|-------------------|------|
-| 1 | **Open-LLM-VTuber** | Core VTuber framework (server, frontend, Live2D, proxy) | [GitHub](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber) |
-| 2 | **blivedm** | Bilibili live chat integration (submodule of Open-LLM-VTuber) | [GitHub](https://github.com/Open-LLM-VTuber/blivedm) |
-| 3 | **edge-tts** | Free Microsoft Edge text-to-speech engine | [GitHub](https://github.com/rany2/edge-tts) |
-| 4 | **chat-downloader** | YouTube live chat scraper (Method 1) | [GitHub](https://github.com/xenova/chat-downloader) |
-| 5 | **websocket-client** | Python WebSocket client for VTuber proxy | [GitHub](https://github.com/websocket-client/websocket-client) |
-| 6 | **Google Chrome** | Headless browser for Live2D rendering + audio | [Download](https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb) |
-| 7 | **FFmpeg** | Video/audio capture and RTMP streaming | [ffmpeg.org](https://ffmpeg.org) |
-| 8 | **PulseAudio** | Virtual audio sink for routing Chrome audio to FFmpeg | [freedesktop.org](https://www.freedesktop.org/wiki/Software/PulseAudio/) |
-| 9 | **Xvfb** | Virtual X11 display for headless Chrome rendering | [X.Org](https://www.x.org/) |
-| 10 | **sherpa-onnx** | Local speech recognition (ASR) engine | [GitHub](https://github.com/k2-fsa/sherpa-onnx) |
+Each dependency has its own folder with README, install script, and config files:
 
-### Python Packages (installed via pip)
+| # | Dependency | Folder | GitHub | What We Use It For |
+|---|-----------|--------|--------|-------------------|
+| 1 | **Open-LLM-VTuber** | [`dependencies/open-llm-vtuber/`](dependencies/open-llm-vtuber/) | [GitHub](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber) | Core VTuber framework (server, frontend, Live2D, proxy) |
+| 2 | **blivedm** | [`dependencies/blivedm/`](dependencies/blivedm/) | [GitHub](https://github.com/Open-LLM-VTuber/blivedm) | Bilibili live chat integration |
+| 3 | **edge-tts** | [`dependencies/edge-tts/`](dependencies/edge-tts/) | [GitHub](https://github.com/rany2/edge-tts) | Free Microsoft Edge text-to-speech |
+| 4 | **chat-downloader** | [`dependencies/chat-downloader/`](dependencies/chat-downloader/) | [GitHub](https://github.com/xenova/chat-downloader) | YouTube live chat scraper |
+| 5 | **websocket-client** | [`dependencies/websocket-client/`](dependencies/websocket-client/) | [GitHub](https://github.com/websocket-client/websocket-client) | Python WebSocket client |
+| 6 | **Google Chrome** | [`dependencies/chrome/`](dependencies/chrome/) | [Download](https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb) | Live2D rendering + audio playback |
+| 7 | **FFmpeg** | [`dependencies/ffmpeg/`](dependencies/ffmpeg/) | [ffmpeg.org](https://ffmpeg.org) | Screen + audio capture → RTMP stream |
+| 8 | **PulseAudio** | [`dependencies/pulseaudio/`](dependencies/pulseaudio/) | [freedesktop.org](https://www.freedesktop.org/wiki/Software/PulseAudio/) | Virtual audio sink for routing |
+| 9 | **Xvfb** | [`dependencies/xvfb/`](dependencies/xvfb/) | [X.Org](https://www.x.org/) | Virtual X11 display for headless Chrome |
+| 10 | **sherpa-onnx** | [`dependencies/sherpa-onnx/`](dependencies/sherpa-onnx/) | [GitHub](https://github.com/k2-fsa/sherpa-onnx) | Local speech recognition (ASR) |
+
+### Python Packages
 ```
 chat-downloader    # YouTube chat scraping
 websocket-client   # WebSocket connections
@@ -107,24 +91,15 @@ anthropic          # Claude API client
 curl -sSL https://raw.githubusercontent.com/Maliot100X/ai-vtuber-livestream/main/setup.sh | bash
 ```
 
-Then configure:
-```bash
-nano ~/Open-LLM-VTuber/.env       # Your API keys
-nano ~/Open-LLM-VTuber/conf.yaml  # Full VTuber config
-```
-
-Then start:
-```bash
-~/ai-vtuber-livestream/scripts/start_vtuber.sh
-```
+Or install each dependency manually from its folder above.
 
 ---
 
 ## 📋 Prerequisites
 
-- **AWS EC2** — Ubuntu 24.04+, t3.large (2 vCPU, 8GB RAM) or better
-- **Security Group** — Open ports `12393` (HTTPS), `12394` (WSS proxy), `22` (SSH)
-- **YouTube Channel** — Live streaming enabled, get stream key from YouTube Studio → Go Live → Stream
+- **AWS EC2** — Ubuntu 24.04+, t3.large (2 vCPU, 8GB RAM)
+- **Security Group** — Open ports `12393`, `12394`, `22`
+- **YouTube Channel** — Live streaming enabled
 - **LLM API Key** — Any OpenAI-compatible provider
 
 ---
@@ -134,113 +109,49 @@ Then start:
 ### Step 1: System Dependencies
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y \
-  python3 python3-pip python3-venv \
-  git curl wget unzip \
+sudo apt install -y python3 python3-pip python3-venv python3-dev \
+  git curl wget unzip build-essential \
   xvfb pulseaudio ffmpeg \
   libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
-  libgbm1 libasound2 libxshmfence1
+  libgbm1 libasound2 libxshmfence1 libgtk-3-0
 ```
 
-### Step 2: Install Google Chrome
+### Step 2: Install Chrome
 ```bash
+# See: dependencies/chrome/
 wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo dpkg -i /tmp/chrome.deb || sudo apt-get install -f -y
-rm /tmp/chrome.deb
 ```
 
-### Step 3: Clone & Install Open-LLM-VTuber
+### Step 3: Install Open-LLM-VTuber
 ```bash
+# See: dependencies/open-llm-vtuber/
 cd ~
 git clone https://github.com/Open-LLM-VTuber/Open-LLM-VTuber.git
 cd Open-LLM-VTuber
-
-python3 -m venv .venv
-source .venv/bin/activate
-
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-pip install chat-downloader websocket-client edge-tts loguru requests
+pip install chat-downloader websocket-client edge-tts loguru requests sherpa-onnx
 ```
 
-### Step 4: Clone This Repo
+### Step 4: Configure
 ```bash
-cd ~
-git clone https://github.com/Maliot100X/ai-vtuber-livestream.git
-```
-
-### Step 5: Configure
-```bash
-# Copy config
 cp ~/ai-vtuber-livestream/config/conf.yaml.full ~/Open-LLM-VTuber/conf.yaml
-
-# Copy env
 cp ~/ai-vtuber-livestream/.env.example ~/Open-LLM-VTuber/.env
-nano ~/Open-LLM-VTuber/.env
+nano ~/Open-LLM-VTuber/.env  # Add your API keys
 ```
 
-Your `.env`:
-```env
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_API_KEY=sk-your-actual-key
-LLM_MODEL=gpt-4o-mini
-YOUTUBE_STREAM_KEY=xxxx-xxxx-xxxx-xxxx
-YOUTUBE_VIDEO_ID=your-video-id
-VTUBER_PUBLIC_IP=your-ec2-ip
-```
-
-Then edit `conf.yaml` and update the LLM section:
-```yaml
-openai_compatible_llm:
-  base_url: 'YOUR_LLM_BASE_URL'
-  llm_api_key: 'YOUR_LLM_API_KEY'
-  model: 'YOUR_MODEL'
-```
-
-### Step 6: Set Up Virtual Display & Audio
+### Step 5: Patch Frontend
 ```bash
-# Virtual display
-Xvfb :99 -screen 0 1920x1080x24 &
-export DISPLAY=:99
-
-# PulseAudio with virtual sink
-pulseaudio --start --exit-idle-time=-1
-pactl load-module module-null-sink sink_name=virtual_output
-pactl set-default-sink virtual_output
-```
-
-### Step 7: Patch Frontend for Proxy WebSocket
-The default frontend connects to `/client-ws` but we need `/proxy-ws`:
-```bash
+# See: patches/frontend-proxy-ws-fix.md
 cd ~/Open-LLM-VTuber
 FRONTEND_JS=$(ls frontend/assets/main-*.js)
-
-# Replace client-ws with proxy-ws
 sed -i 's|/client-ws|/proxy-ws|g' "$FRONTEND_JS"
-
-# Update URLs to your server
-sed -i 's|wss://localhost:12394|wss://YOUR_IP:12394|g' "$FRONTEND_JS"
-sed -i 's|https://localhost:12394|https://YOUR_IP:12394|g' "$FRONTEND_JS"
 ```
 
-### Step 8: Start Everything
+### Step 6: Start Everything
 ```bash
 ~/ai-vtuber-livestream/scripts/start_vtuber.sh
-```
-
-Or manually (4 terminals):
-```bash
-# Terminal 1: VTuber Server
-cd ~/Open-LLM-VTuber && source .venv/bin/activate && python main.py
-
-# Terminal 2: Chrome
-~/ai-vtuber-livestream/scripts/vtuber-chrome.sh
-
-# Terminal 3: YouTube Chat Bridge
-export YOUTUBE_VIDEO_ID=your-id
-~/ai-vtuber-livestream/scripts/yt-chat-reader.py YOUR_VIDEO_ID
-
-# Terminal 4: FFmpeg Stream
-~/ai-vtuber-livestream/scripts/youtube-stream.sh
 ```
 
 ---
@@ -249,33 +160,72 @@ export YOUTUBE_VIDEO_ID=your-id
 
 ```
 ai-vtuber-livestream/
-├── README.md                          # This file
-├── LICENSE                            # MIT License
-├── .env.example                       # Environment variables template
+├── README.md
+├── LICENSE
+├── .env.example
 ├── .gitignore
-├── setup.sh                           # One-command full setup
+├── setup.sh
 │
 ├── config/
 │   ├── conf.yaml.example              # Minimal config template
-│   └── conf.yaml.full                 # Complete working config (all options)
+│   └── conf.yaml.full                 # Complete 504-line config
 │
 ├── scripts/
-│   ├── start_vtuber.sh                # Start all 6 services
+│   ├── start_vtuber.sh                # Start all services
 │   ├── stop_vtuber.sh                 # Stop all services
-│   ├── health_check.sh                # Check service status
-│   ├── vtuber-chrome.sh               # Launch Chrome with virtual audio
-│   ├── youtube-stream.sh              # FFmpeg RTMP stream to YouTube
-│   ├── yt-chat-reader.py              # YouTube chat bridge (chat-downloader)
-│   ├── yt-chat-reader2.py             # YouTube chat bridge (innertube API)
-│   ├── youtube_chat_bridge.py         # YouTube chat bridge (threaded)
-│   ├── youtube_chat_bridge_v2.py      # YouTube chat bridge v2
-│   ├── youtube_live_bridge.py         # Full bridge (chat + Chrome + FFmpeg)
-│   └── run_bilibili_live.py           # Bilibili live chat integration
+│   ├── health_check.sh                # Status check
+│   ├── vtuber-chrome.sh               # Chrome launch
+│   ├── youtube-stream.sh              # FFmpeg RTMP stream
+│   ├── yt-chat-reader.py              # Chat bridge (Method 1)
+│   ├── yt-chat-reader2.py             # Chat bridge (Method 2)
+│   ├── youtube_chat_bridge.py         # Threaded bridge
+│   ├── youtube_chat_bridge_v2.py      # Bridge v2
+│   ├── youtube_live_bridge.py         # Full bridge
+│   └── run_bilibili_live.py           # Bilibili integration
+│
+├── dependencies/                      # ← FULL SETUP FOR EACH DEPENDENCY
+│   ├── open-llm-vtuber/               # Core framework
+│   │   ├── README.md
+│   │   ├── install.sh
+│   │   └── conf.yaml.working          # Our actual working config
+│   ├── blivedm/                       # Bilibili live chat
+│   │   └── README.md
+│   ├── edge-tts/                      # Free TTS
+│   │   ├── README.md
+│   │   └── install.sh
+│   ├── chat-downloader/               # YouTube chat scraper
+│   │   ├── README.md
+│   │   ├── install.sh
+│   │   ├── yt-chat-reader.py          # Our working script
+│   │   └── yt-chat-reader2.py         # Alternative method
+│   ├── websocket-client/              # WebSocket client
+│   │   ├── README.md
+│   │   └── install.sh
+│   ├── chrome/                        # Browser rendering
+│   │   ├── README.md
+│   │   ├── install.sh
+│   │   └── launch.sh                  # Our Chrome launch script
+│   ├── ffmpeg/                        # RTMP streaming
+│   │   ├── README.md
+│   │   ├── install.sh
+│   │   └── stream.sh                  # Our FFmpeg stream script
+│   ├── pulseaudio/                    # Virtual audio
+│   │   ├── README.md
+│   │   └── install.sh
+│   ├── xvfb/                          # Virtual display
+│   │   ├── README.md
+│   │   └── install.sh
+│   └── sherpa-onnx/                   # Local ASR
+│       ├── README.md
+│       └── install.sh
+│
+├── patches/
+│   └── frontend-proxy-ws-fix.md       # Frontend patch instructions
 │
 └── docs/
-    ├── ARCHITECTURE.md                # Deep dive architecture
-    ├── TROUBLESHOOTING.md             # Fix common issues
-    └── LLM_PROVIDERS.md               # 8+ LLM provider configs
+    ├── ARCHITECTURE.md                # Deep dive
+    ├── TROUBLESHOOTING.md             # Common fixes
+    └── LLM_PROVIDERS.md               # 8+ providers
 ```
 
 ---
@@ -296,67 +246,29 @@ ai-vtuber-livestream/
 tail -f /tmp/vtuber-server.log
 tail -f /tmp/yt-bridge.log
 tail -f /tmp/ffmpeg-stream.log
-
-# Manual Chrome launch (with virtual audio)
-DISPLAY=:99 PULSE_SINK=virtual_output ~/ai-vtuber-livestream/scripts/vtuber-chrome.sh
-
-# Manual FFmpeg stream
-~/ai-vtuber-livestream/scripts/youtube-stream.sh
-
-# Manual YouTube chat reader
-python3 ~/ai-vtuber-livestream/scripts/yt-chat-reader.py YOUR_VIDEO_ID
 ```
 
 ---
 
 ## 🤖 Supported LLM Providers
 
-| Provider | Config Key | Example Model | Speed |
-|----------|-----------|---------------|-------|
-| **Groq** | `groq_llm` | `llama-3.3-70b-versatile` | ⚡⚡⚡ |
-| **DeepSeek** | `deepseek_llm` | `deepseek-chat` | ⚡⚡ |
-| **OpenAI** | `openai_llm` | `gpt-4o-mini` | ⚡⚡ |
-| **OpenRouter** | `openai_compatible_llm` | `anthropic/claude-3.5-sonnet` | ⚡⚡ |
-| **Together** | `openai_compatible_llm` | `Meta-Llama-3.1-70B` | ⚡⚡ |
-| **Gemini** | `gemini_llm` | `gemini-2.0-flash-exp` | ⚡⚡⚡ |
-| **Claude** | `claude_llm` | `claude-3-haiku` | ⚡⚡ |
-| **Ollama** | `ollama_llm` | `llama3.2` | ⚡ |
+| Provider | Config Key | Example Model |
+|----------|-----------|---------------|
+| Groq | `groq_llm` | `llama-3.3-70b-versatile` |
+| DeepSeek | `deepseek_llm` | `deepseek-chat` |
+| OpenAI | `openai_llm` | `gpt-4o-mini` |
+| OpenRouter | `openai_compatible_llm` | `anthropic/claude-3.5-sonnet` |
+| Gemini | `gemini_llm` | `gemini-2.0-flash-exp` |
+| Claude | `claude_llm` | `claude-3-haiku` |
+| Ollama | `ollama_llm` | `llama3.2` |
 
-See [docs/LLM_PROVIDERS.md](docs/LLM_PROVIDERS.md) for exact config.
-
----
-
-## 🎤 Supported TTS Engines
-
-| Engine | Quality | Latency | Cost | Config Key |
-|--------|---------|---------|------|------------|
-| **Edge TTS** | ★★★★ | Fast | Free | `edge_tts` |
-| **OpenAI TTS** | ★★★★★ | Medium | Paid | `openai_tts` |
-| **ElevenLabs** | ★★★★★ | Medium | Paid | `elevenlabs_tts` |
-| **Fish Audio** | ★★★★ | Medium | Paid | `fish_api_tts` |
-| **Piper** | ★★★ | Fast | Free | `piper_tts` |
-| **Bark** | ★★★★ | Slow | Free | `bark_tts` |
-| **CosyVoice** | ★★★★ | Medium | Free | `cosyvoice_tts` |
-| **Coqui** | ★★★★ | Medium | Free | `coqui_tts` |
-| **Sherpa ONNX** | ★★★ | Fast | Free | `sherpa_onnx_tts` |
-
----
-
-## 🐛 Common Issues
-
-**Chrome blank screen?** → `ps aux | grep Xvfb` and `echo $DISPLAY`
-**No audio?** → `pactl list sinks short | grep virtual_output`
-**Chat not working?** → `tail -f /tmp/yt-bridge.log`
-**AI not responding?** → `tail -50 ~/Open-LLM-VTuber/logs/debug_*.log`
-**Frontend not receiving responses?** → Patch frontend JS (Step 7)
-
-See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for full guide.
+See [docs/LLM_PROVIDERS.md](docs/LLM_PROVIDERS.md)
 
 ---
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE)
+MIT — see [LICENSE](LICENSE)
 
 ---
 
