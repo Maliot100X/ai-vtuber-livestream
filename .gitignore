@@ -1,0 +1,37 @@
+# Environment & secrets
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Chrome temp data
+/tmp/
+
+# Model files
+models/
+*.gguf
+*.onnx
+
+# Chat history
+chat_history/
+
+# Open-LLM-VTuber (cloned at setup time)
+Open-LLM-VTuber/
